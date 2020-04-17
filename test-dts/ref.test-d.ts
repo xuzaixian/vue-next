@@ -20,6 +20,18 @@ function plainType(arg: number | Ref<number>) {
   })
   expectType<Ref<{ foo: number }>>(nestedRef)
   expectType<{ foo: number }>(nestedRef.value)
+
+  // tuple
+  expectType<[number, string]>(unref(ref([1, '1'])))
+
+  interface IteratorFoo {
+    [Symbol.iterator]: any
+  }
+
+  // with symbol
+  expectType<Ref<IteratorFoo | null | undefined>>(
+    ref<IteratorFoo | null | undefined>()
+  )
 }
 
 plainType(1)
@@ -45,3 +57,20 @@ function bailType(arg: HTMLElement | Ref<HTMLElement>) {
 }
 const el = document.createElement('DIV')
 bailType(el)
+
+function withSymbol() {
+  const customSymbol = Symbol()
+  const obj = {
+    [Symbol.asyncIterator]: { a: 1 },
+    [Symbol.unscopables]: { b: '1' },
+    [customSymbol]: { c: [1, 2, 3] }
+  }
+
+  const objRef = ref(obj)
+
+  expectType<{ a: number }>(objRef.value[Symbol.asyncIterator])
+  expectType<{ b: string }>(objRef.value[Symbol.unscopables])
+  expectType<{ c: Array<number> }>(objRef.value[customSymbol])
+}
+
+withSymbol()

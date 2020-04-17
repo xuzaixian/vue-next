@@ -3,7 +3,8 @@ import {
   render,
   getCurrentInstance,
   nodeOps,
-  createApp
+  createApp,
+  shallowReadonly
 } from '@vue/runtime-test'
 import { mockWarn } from '@vue/shared'
 import { ComponentInternalInstance } from '../src/component'
@@ -34,7 +35,7 @@ describe('component: proxy', () => {
     expect(instance!.data.foo).toBe(2)
   })
 
-  test('renderContext', () => {
+  test('setupState', () => {
     let instance: ComponentInternalInstance
     let instanceProxy: any
     const Comp = {
@@ -54,7 +55,7 @@ describe('component: proxy', () => {
     render(h(Comp), nodeOps.createElement('div'))
     expect(instanceProxy.foo).toBe(1)
     instanceProxy.foo = 2
-    expect(instance!.renderContext.foo).toBe(2)
+    expect(instance!.setupState.foo).toBe(2)
   })
 
   test('should not expose non-declared props', () => {
@@ -85,10 +86,10 @@ describe('component: proxy', () => {
     }
     render(h(Comp), nodeOps.createElement('div'))
     expect(instanceProxy.$data).toBe(instance!.data)
-    expect(instanceProxy.$props).toBe(instance!.props)
-    expect(instanceProxy.$attrs).toBe(instance!.attrs)
-    expect(instanceProxy.$slots).toBe(instance!.slots)
-    expect(instanceProxy.$refs).toBe(instance!.refs)
+    expect(instanceProxy.$props).toBe(shallowReadonly(instance!.props))
+    expect(instanceProxy.$attrs).toBe(shallowReadonly(instance!.attrs))
+    expect(instanceProxy.$slots).toBe(shallowReadonly(instance!.slots))
+    expect(instanceProxy.$refs).toBe(shallowReadonly(instance!.refs))
     expect(instanceProxy.$parent).toBe(
       instance!.parent && instance!.parent.proxy
     )
@@ -100,7 +101,7 @@ describe('component: proxy', () => {
     expect(`Attempting to mutate public property "$data"`).toHaveBeenWarned()
   })
 
-  test('sink', async () => {
+  test('user attached properties', async () => {
     let instance: ComponentInternalInstance
     let instanceProxy: any
     const Comp = {
@@ -115,7 +116,7 @@ describe('component: proxy', () => {
     render(h(Comp), nodeOps.createElement('div'))
     instanceProxy.foo = 1
     expect(instanceProxy.foo).toBe(1)
-    expect(instance!.sink.foo).toBe(1)
+    expect(instance!.ctx.foo).toBe(1)
   })
 
   test('globalProperties', () => {
@@ -139,8 +140,8 @@ describe('component: proxy', () => {
 
     // set should overwrite globalProperties with local
     instanceProxy.foo = 2
-    expect(instanceProxy.foo).toBe(2)
-    expect(instance!.sink.foo).toBe(2)
+    // expect(instanceProxy.foo).toBe(2)
+    expect(instance!.ctx.foo).toBe(2)
     // should not affect global
     expect(app.config.globalProperties.foo).toBe(1)
   })
@@ -176,7 +177,7 @@ describe('component: proxy', () => {
     expect('msg' in instanceProxy).toBe(true)
     // data
     expect('foo' in instanceProxy).toBe(true)
-    // renderContext
+    // ctx
     expect('bar' in instanceProxy).toBe(true)
     // public properties
     expect('$el' in instanceProxy).toBe(true)
@@ -187,7 +188,7 @@ describe('component: proxy', () => {
     expect('$foobar' in instanceProxy).toBe(false)
     expect('baz' in instanceProxy).toBe(false)
 
-    // set non-existent (goes into sink)
+    // set non-existent (goes into proxyTarget sink)
     instanceProxy.baz = 1
     expect('baz' in instanceProxy).toBe(true)
 
